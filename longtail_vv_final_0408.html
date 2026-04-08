@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>롱테일 MG 분석 대시보드</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/>
+<style>
+:root{
+  --bg:#F9F8F6;--w:#fff;--b1:#ECEAE6;--b2:#D8D5CE;
+  --t1:#1A1917;--t2:#6F6B66;--t3:#A89F97;
+  --acc:#3D3BE8;--abg:#EFEFFB;
+  --grn:#16A34A;--gbg:#F0FDF4;
+  --amb:#DC2626;--ambg:#FEF2F2;
+  --red:#A83030;--rbg:#FAF0F0;
+  --sans:'Pretendard',-apple-system,sans-serif;
+  --mono:'SF Mono','Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--bg);color:var(--t1);font-size:14px}
+
+/* ── HEADER ── */
+#hdr{height:52px;background:var(--w);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 14px;gap:10px;flex-shrink:0;z-index:1000}
+.ldot{width:7px;height:7px;border-radius:2px;background:var(--acc);flex-shrink:0}
+.htl{font-size:14px;font-weight:500;white-space:nowrap}
+.sep{width:1px;height:20px;background:var(--b1);flex-shrink:0}
+.sw{position:relative;flex:1;max-width:380px}
+.sw input{width:100%;height:32px;padding:0 10px 0 28px;border:1px solid var(--b2);border-radius:5px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--t1);outline:none;transition:border-color .15s}
+.sw input:focus{border-color:var(--acc);background:var(--w)}
+.sico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:12px;pointer-events:none}
+.sdrop{position:absolute;top:36px;left:0;width:400px;background:var(--w);border:1px solid var(--b2);border-radius:8px;max-height:300px;overflow-y:auto;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.1);display:none}
+.si{padding:9px 13px;cursor:pointer;border-bottom:1px solid var(--b1)}
+.si:last-child{border-bottom:none}
+.si:hover{background:var(--bg)}
+.sn{font-size:13px;font-weight:500;margin-bottom:2px}
+.sa{font-size:11px;color:var(--t3)}
+.sbg{display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:500}
+.sb-c{background:var(--abg);color:var(--acc)}
+.sb-a{background:#F3F0FF;color:#5B21B6}
+.sb-n{background:#FFF3E0;color:#E65100}
+.rctl{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.rctl label{font-size:12px;color:var(--t2);white-space:nowrap}
+.rctl input[type=range]{width:80px;accent-color:var(--t1)}
+.rv{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--acc);min-width:36px}
+.hright{display:flex;align-items:center;gap:10px;margin-left:auto}
+.hbtn{height:28px;padding:0 10px;border:1px solid var(--b2);border-radius:4px;background:var(--bg);font-family:var(--sans);font-size:12px;color:var(--t2);cursor:pointer}
+.hbtn:hover{background:var(--b1)}
+
+/* ── LAYOUT ── */
+#main{display:flex;height:calc(100vh - 52px - 26px)}
+#map{flex:1;min-width:0}
+
+/* ── PANEL ── */
+#pnl{width:380px;flex-shrink:0;background:var(--w);border-left:1px solid var(--b1);overflow-y:auto;display:flex;flex-direction:column;transition:width .2s}
+#pnl.wide{width:720px}
+.pe{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;text-align:center}
+.pe-ico{font-size:28px;color:var(--t3);margin-bottom:12px}
+.pe-t{font-size:14px;font-weight:500;margin-bottom:6px}
+.pe-s{font-size:12px;color:var(--t2);line-height:1.7}
+
+/* dual layout */
+.dual{display:flex;gap:0;height:100%}
+.dual-col{flex:1;overflow-y:auto;border-right:1px solid var(--b1)}
+.dual-col:last-child{border-right:none}
+.dual-hdr{padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--b1);font-size:12px;font-weight:600;color:var(--t2);display:flex;align-items:center;gap:6px}
+.dc-season{color:#C0392B}
+.dc-park{color:#1A56DB}
+
+/* ── SEC ── */
+.sec{padding:12px 14px;border-bottom:1px solid var(--b1)}
+.stag{font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.sn2{width:14px;height:14px;border-radius:3px;background:var(--t1);color:var(--w);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;flex-shrink:0}
+.sn2.red{background:#DC2626}.sn2.green{background:#16A34A}.sn2.park{background:#D97706}
+
+.site-name{font-size:16px;font-weight:500;letter-spacing:-.02em;margin-bottom:5px}
+.pills{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.pill{font-size:11px;padding:2px 7px;border-radius:4px;border:1px solid var(--b1);color:var(--t2)}
+.pill-acc{background:var(--abg);color:var(--acc);border-color:#C7C6F5}
+.pill-grn{background:var(--gbg);color:var(--grn);border-color:#BBE8D0}
+.pill-amb{background:var(--ambg);color:var(--amb);border-color:#E8C99A}
+.basis{font-size:11px;color:var(--t3);line-height:1.5;margin-top:4px}
+
+/* ── METRICS ── */
+.mg2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.mc{background:var(--bg);border-radius:5px;padding:9px 10px}
+.mc .k{font-size:10px;color:var(--t3);margin-bottom:4px}
+.mc .v{font-size:19px;font-weight:500;font-family:var(--mono);letter-spacing:-.02em;line-height:1.1}
+.mc .v2{font-size:13px;font-weight:500;font-family:var(--mono);color:var(--t1)}
+.mc .s{font-size:10px;color:var(--t3);margin-top:3px}
+.mc .s2{font-size:11px;color:var(--t2);margin-top:3px}
+
+/* sell rate bar */
+.rate-row{display:flex;align-items:center;gap:6px;margin-top:4px}
+.rate-bar{flex:1;height:5px;background:var(--b1);border-radius:3px;overflow:hidden}
+.rate-fill{height:5px;border-radius:3px;transition:width .3s}
+.rate-txt{font-size:11px;font-weight:500;min-width:30px;text-align:right}
+
+/* signal badge */
+.sig{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;padding:2px 7px;border-radius:4px;margin-top:5px}
+.sig-g{background:var(--gbg);color:var(--grn)}
+.sig-a{background:var(--ambg);color:var(--amb)}
+.sig-r{background:var(--rbg);color:var(--red)}
+.sigdot{width:5px;height:5px;border-radius:50%}
+
+/* MG price section */
+.mgprice{font-size:32px;font-weight:500;font-family:var(--mono);letter-spacing:-.03em;margin-bottom:2px}
+.mgsub{font-size:12px;color:var(--t2);margin-bottom:10px}
+.rlabels{display:flex;justify-content:space-between;font-size:10px;color:var(--t3);margin-bottom:4px}
+.rtrack{position:relative;height:7px;background:#EEF0F8;border-radius:4px;border:1px solid #C7C6F5;margin-bottom:5px}
+.rfill{position:absolute;top:0;height:7px;background:#C7C6F5;border-radius:4px}
+.rdot{position:absolute;top:50%;transform:translate(-50%,-50%);width:12px;height:12px;border-radius:50%;background:var(--acc);border:2px solid var(--w)}
+.rhint{font-size:11px;color:var(--acc);font-weight:500;margin-top:6px}
+.rbox{font-size:10px;color:var(--t3);font-family:var(--mono);margin-top:5px;line-height:1.7;background:var(--bg);padding:7px 9px;border-radius:4px}
+
+/* chart */
+.chart-wrap{position:relative;width:100%;height:130px}
+.chart-wrap.tall{height:160px}
+
+/* nearby cards */
+.nhead{padding:8px 14px 4px;font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.nc{padding:9px 14px;border-top:1px solid var(--b1);cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center}
+.nc:hover{background:var(--bg)}
+.nc-l .nn{font-size:13px;font-weight:500;margin-bottom:2px}
+.nc-l .nm{font-size:11px;color:var(--t3)}
+.nc-r{text-align:right}
+.nc-r .np{font-size:13px;font-weight:500;font-family:var(--mono);margin-bottom:3px}
+.nrrow{display:flex;align-items:center;gap:4px;justify-content:flex-end}
+.nbar{width:44px;height:3px;background:var(--b1);border-radius:2px;overflow:hidden}
+.nbarf{height:3px;border-radius:2px}
+.npct{font-size:11px;font-weight:500;min-width:28px;text-align:right}
+.ptb{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:5px;margin-bottom:5px;line-height:1.3}
+.pt-both{background:#F0FDF4;color:#16A34A;border:1px solid #86EFAC}
+.pt-sea{background:#FEF2F2;color:#DC2626;border:1px solid #FCA5A5}
+.pt-pk{background:#FFFBEB;color:#D97706;border:1px solid #FCD34D}
+
+/* back button */
+.bbtn{padding:9px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:6px;background:var(--bg);cursor:pointer;font-size:12px;color:var(--t2)}
+.bbtn:hover{background:var(--b1)}
+
+/* data note */
+.dnote{font-size:10px;color:var(--t3);background:var(--bg);padding:6px 9px;border-radius:4px;line-height:1.6;margin-top:6px}
+
+
+/* ── Candidate hero metrics ── */
+.hero-card{padding:16px 16px 14px;background:linear-gradient(180deg,#F7F8FF 0%,#FFFFFF 100%);border-bottom:1px solid var(--b1)}
+.hero-tag{font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--acc);margin-bottom:8px;text-transform:uppercase}
+.hero-main{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}
+.hero-main .label{font-size:12px;color:var(--t2);margin-bottom:4px}
+.hero-main .value{font-size:38px;line-height:1;font-weight:700;letter-spacing:-.04em;font-family:var(--mono);color:var(--t1)}
+.hero-main .sub{font-size:12px;color:var(--t2);margin-top:6px}
+.hero-chip{padding:8px 10px;border-radius:8px;background:var(--abg);color:var(--acc);font-size:11px;font-weight:600;white-space:nowrap}
+.hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.hero-metric{background:var(--w);border:1px solid var(--b1);border-radius:8px;padding:10px 10px 9px;min-height:74px}
+.hero-metric .k{font-size:10px;color:var(--t3);margin-bottom:5px}
+.hero-metric .v{font-size:22px;line-height:1.05;font-weight:700;font-family:var(--mono);letter-spacing:-.03em;color:var(--t1)}
+.hero-metric .s{font-size:11px;color:var(--t2);margin-top:4px}
+.hero-grid.two{grid-template-columns:repeat(2,1fr);margin-top:8px}
+
+/* ── STATUS BAR ── */
+#stbar{height:26px;background:var(--w);border-top:1px solid var(--b1);display:flex;align-items:center;padding:0 14px;gap:14px;flex-shrink:0}
+.sti{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:3px}
+.std{width:5px;height:5px;border-radius:50%}
+.leg{display:flex;align-items:center;gap:10px;margin-left:auto}
+.li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t3)}
+.ld{width:8px;height:8px;border-radius:50%}
+.loader{display:none;font-size:11px;color:var(--acc);margin-left:6px}
+
+/* ── 공영 토글 버튼 ── */
+.toggle-btn{height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--b2);background:var(--bg);font-size:11px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.toggle-btn.on{background:#F3F0FF;color:#5B21B6;border-color:#C4B5FD}
+.toggle-btn .tdot{width:7px;height:7px;border-radius:50%;background:#9CA3AF;flex-shrink:0}
+.toggle-btn.on .tdot{background:#7C3AED}
+
+/* ── 후보군 사이드바 ── */
+#sidebar{width:220px;flex-shrink:0;background:var(--w);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
+#sidebar.collapsed{width:0}
+#sb-hdr{padding:10px 12px 8px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sb-title{font-size:12px;font-weight:600;color:var(--t2)}
+.sb-count{font-size:11px;color:var(--t3);margin-left:4px}
+#sb-search{padding:6px 10px;border-bottom:1px solid var(--b1);flex-shrink:0}
+#sb-search input{width:100%;height:26px;padding:0 8px;border:1px solid var(--b2);border-radius:4px;font-size:11px;font-family:var(--sans);background:var(--bg);outline:none}
+#sb-search input:focus{border-color:var(--acc)}
+#sb-list{flex:1;overflow-y:auto}
+.sb-item{padding:8px 12px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .1s}
+.sb-item:hover{background:var(--bg)}
+.sb-item.active{background:var(--abg);border-left:2px solid var(--acc)}
+.sb-item .sb-name{font-size:12px;font-weight:500;color:var(--t1);margin-bottom:2px;line-height:1.3}
+.sb-item .sb-info{font-size:10px;color:var(--t3);display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
+.sb-tag{background:var(--bg);border:1px solid var(--b1);border-radius:3px;padding:1px 4px}
+.sb-toggle{width:16px;background:var(--bg);border-right:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:10px;flex-shrink:0}
+.sb-toggle:hover{background:var(--b1)}
+</style>
+</head>
+<body>
+<div id="hdr">
+  <div class="ldot"></div>
+  <span class="htl">롱테일 MG 분석</span>
+  <div class="sep"></div>
+  <div class="sw">
+    <span class="sico">&#9906;</span>
+    <input type="text" id="si" placeholder="후보 현장명 · 판매 현장명 · 정기권/주차권 · 주소 검색..." autocomplete="off"/>
+    <div class="sdrop" id="sd"></div>
+  </div>
+  <div class="rctl">
+    <label>반경</label>
+    <input type="range" id="rs" min="200" max="2000" step="100" value="500"/>
+    <span class="rv" id="rv">500m</span>
+  </div>
+  <div class="hright">
+    <button class="toggle-btn on" id="pubToggle" onclick="togglePublic()">
+      <span class="tdot"></span>공영주차장
+    </button>
+    <span id="loading" class="loader">검색 중...</span>
+  </div>
+</div>
+<div id="main">
+  <div class="sb-toggle" id="sbToggle" onclick="toggleSidebar()" title="후보군 목록">❮</div>
+  <div id="sidebar">
+    <div id="sb-hdr">
+      <span class="sb-title">후보 현장 목록</span>
+      <span class="sb-count" id="sbCount"></span>
+    </div>
+    <div id="sb-search"><input type="text" id="sbInput" placeholder="이름 검색..." oninput="filterSidebar(this.value)"/></div>
+    <div id="sb-list"></div>
+  </div>
+  <div id="map"></div>
+  <div id="pnl">
+    <div class="pe">
+      <div class="pe-ico">&#9733;</div>
+      <div class="pe-t">후보 현장을 선택하세요</div>
+      <div class="pe-s">★ 마커 클릭 또는 검색창에서<br>후보 현장명 또는 주소를 입력하세요<br><br><strong>현대백화점 천호점</strong>처럼<br>미등록 주소도 검색 후<br>인근 실적 데이터를 확인할 수 있습니다</div>
+    </div>
+  </div>
+</div>
+<div id="stbar">
+  <div class="sti"><div class="std" style="background:var(--acc)"></div>후보 <span id="sc" style="font-weight:500;color:var(--t1);margin-left:2px">...</span>개</div>
+  <div class="sti"><div class="std" style="background:#888"></div>판매 현장 <span id="sm" style="font-weight:500;color:var(--t1);margin-left:2px">...</span>개</div>
+  <div class="sti" id="ssel" style="display:none"><div class="std" style="background:var(--amb)"></div><span id="ssn"></span></div>
+  <div class="leg">
+    <div class="li"><div class="ld" style="background:#1A56DB"></div>정기권+주차권</div>
+    <div class="li"><div class="ld" style="background:#DC2626"></div>정기권만</div>
+    <div class="li"><div class="ld" style="background:#EAB308"></div>주차권만</div>
+    <div class="li"><div class="ld" style="background:#9CA3AF"></div>공영</div>
+    <div class="li"><div class="ld" style="background:var(--acc)"></div>★ 후보현장</div>
+  </div>
+</div>
+
+<!-- Kakao JavaScript 키 입력 위치: appkey=YOUR_KAKAO_JS_KEY -->
+<script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=0bca5f37d2fc14f800626abdcf56fe29&autoload=false&libraries=services"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ══════════════════════════════════════════════
+   롱테일 MG 분석 대시보드 - 완전 재작성
+   데이터: candidates / seoul_public / neighbor_lots
+   ══════════════════════════════════════════════ */
+
+const LOGO_URI = "data:image/png;base64,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h1Mk942yNZemHVc4ZZbV5Cj+b8jc5QZ0e7yQxknvG2RrL0w6mSe8bZGsvTDqucMstq8hR/N+RucoM6Pd5IYyT3jbI1l6YdXFzKFKXMpS6cI0aVGMYRhH/kYPRt52Vr2phffU/dFolwL6Vu801PCsUcsv6exxbHH/ADsvXjjHiQ9rWbR1KEmwjGOPH6/8YnzANJQwAAAAAAAAAAAAAAAAAAAAADrLm9K1mPE5PvgvBB9zelazHicn3wXg52wzcI1f4I/VFb7uexn06gBjaxgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADzsrXtTC++p+6L0Tedla9qYX31P3RbngV/31zRJ96r3l9VH06nzAN6VUAAAAAAAAAAAAAAAAAAAAAB1lzelazHicn3wXg887NVvhNQWgwCu8DoSZmEYDPoz5VGbCMaEaVGP5hCMIRhH8f/kYNazlbdaps3w877WQ4RrmWnb9coaapQhGEsuKOOOL048awWPaNBVKOaWk/mKshJucrbrVNm+HnfaZytutU2b4ed9rOsk94c2XtQTG31U449SshJucrbrVNm+HnfaZytutU2b4ed9pknvDmy9qBt9VOOPUrISbnK261TZvh532mcrbrVNm+HnfaZJ7w5svagbfVTjj1KyEm5ytutU2b4ed9pnK261TZvh532mSe8ObL2oG31U449SshJucrbrVNm+HnfaZytutU2b4ed9pknvDmy9qBt9VOOPUrISbnK261TZvh532mcrbrVNm+HnfaZJ7w5svagbfVTjj1KyEm5ytutU2b4ed9pnK261TZvh532mSe8ObL2oG31U449SshJucrbrVNm+HnfaZytutU2b4ed9pknvDmy9qBt9VOOPUrISbnK261TZvh532mcrbrVNm+HnfaZJ7w5svagbfVTjj1KyEm5ytutU2b4ed9pnK261TZvh532mSe8ObL2oG31U449SshJucrbrVNm+HnfaZytutU2b4ed9pknvDmy9qBt9VOOPUrISbnK261TZvh532mcrbrVNm+HnfaZJ7w5svagbfVTjj1KyEm5ytutU2b4ed9pnK261TZvh532mSe8ObL2oG31U449SshJucrbrVNm+HnfaZytutU2b4ed9pknvDmy9qBt9VOOPUrISbnK261TZvh532mcrbrVNm+HnfaZJ7w5svagbfVTjj1KyEm5yt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";
+
+/* ── 설정 ── */
+const CFG = {
+  defaultRadius: 500,
+  maxNearby: 10,
+};
+
+/* ★ Apps Script URL - 여기에 본인 URL 입력 */
+const API_URL = 'https://script.google.com/macros/s/AKfycbxA3EKI60zybkoGSNk64czvWMhFeVCO3h4PHCjPSg4jX8kuS7TeVV98qqDJ2xC5d8Fq/exec';
+
+/* ★ 구글시트 직접 fetch용 - SHEET_ID 입력 */
+const SHEET_ID = '1JSXNFQPy-eBi5qVRIqji-bnOPhGE1_Az6XySYT7LgiM'; // 예: '1JSXNFQPy-eBi5qVRIqji-bnOPhGE1_Az6XySYT7LgiM'
+const SHEET_NAMES = {
+  candidates:  'candidates',
+  seoulPublic: 'seoul_public',
+  neighborLots: 'neighbor_lots',
+};
+
+/* ── 유틸 ── */
+const won  = v => (v != null && !isNaN(v) && v > 0) ? Math.round(v/10000)+'만원' : '-';
+const num  = v => v != null && !isNaN(v) ? Number(v).toLocaleString('ko-KR') : '-';
+const pct  = v => v != null && !isNaN(v) ? Math.round(v*100)+'%' : '-';
+const safe = v => (v == null || v === '' || isNaN(v)) ? 0 : Number(v);
+const toNum = v => {
+  if(v == null || v === '') return null;
+  const n = Number(String(v).replace(/,/g,'').trim());
+  return isNaN(n) ? null : n;
+};
+const toStr = v => (v == null || v === undefined) ? '' : String(v).trim();
+
+function hav(a,b,c,d){
+  const R=6371000, rad=Math.PI/180;
+  const da=(c-a)*rad, db=(d-b)*rad;
+  const x=Math.sin(da/2)**2+Math.cos(a*rad)*Math.cos(c*rad)*Math.sin(db/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+/* ── 구글시트 gviz fetch ── */
+function buildGvizUrl(sheetName){
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&tqx=out:json`;
+}
+function parseGviz(text){
+  const m = text.match(/google\.visualization\.Query\.setResponse\((.*)\);?$/s);
+  if(!m) throw new Error('gviz 파싱 실패');
+  const obj = JSON.parse(m[1]);
+  const cols = (obj.table.cols||[]).map(c=>c.label||c.id||'');
+  return (obj.table.rows||[]).map(r=>{
+    const out={};
+    cols.forEach((col,i)=>{ const cell=r.c&&r.c[i]?r.c[i].v:null; out[col]=cell; });
+    return out;
+  });
+}
+async function fetchSheet(sheetName){
+  const url = buildGvizUrl(sheetName);
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`시트 fetch 실패: ${sheetName}`);
+  const text = await res.text();
+  return parseGviz(text);
+}
+
+/* ── 데이터 ── */
+let CANDS = [], LOTS = [], PUBLIC_LOTS = [];
+let RADIUS = CFG.defaultRadius;
+
+async function loadData(){
+  if(!SHEET_ID || SHEET_ID === 'YOUR_GOOGLE_SHEET_ID') {
+    throw new Error('SHEET_ID를 실제 구글 스프레드시트 ID로 변경해주세요.');
+  }
+
+  const [candRows, pubRows, nbrRows] = await Promise.all([
+    fetchSheet(SHEET_NAMES.candidates),
+    fetchSheet(SHEET_NAMES.seoulPublic),
+    fetchSheet(SHEET_NAMES.neighborLots),
+  ]);
+
+  /* candidates */
+  CANDS = candRows.map(r => ({
+    id:           toStr(r['순번']),
+    name:         toStr(r['후보_사업장명']),
+    addr:         toStr(r['지번 주소']),
+    lat:          toNum(r['Latitude']),
+    lng:          toNum(r['Longitude']),
+    ftype:        toStr(r['시설유형']),
+    contract:     toStr(r['계약유형(재무기준)']),
+    parkingMethod:toStr(r['주차방식']),
+    spots:        toNum(r['면수']),
+    seasonAvgPrice:   toNum(r['정기권_평균가']),
+    weekdayDailyAvgPrice: toNum(r['평일종일권_평균가']),
+    dailyAvgPrice:    toNum(r['종일권_평균가']),
+    seasonRadius:     toNum(r['정기권_적용반경(최대 1km)']),
+    dailyRadius:      toNum(r['종일권_적용반경(최대 1km)']),
+    seasonProductCount: toNum(r['정기권_상품수']),
+    dailyProductCount:  toNum(r['종일권_상품수']),
+    seasonNearbyNames:  toStr(r['정기권_인근주차장목록']),
+    dailyNearbyNames:   toStr(r['종일권_인근주차장목록']),
+  })).filter(r => r.name && r.lat && r.lng);
+
+  /* seoul_public */
+  PUBLIC_LOTS = pubRows.map(r => ({
+    id:           'pub_' + toStr(r['코드']),
+    name:         '(공영) ' + toStr(r['주차장명']),
+    addr:         toStr(r['주소']),
+    lat:          toNum(r['Latitude']),
+    lng:          toNum(r['Longitude']),
+    paidType:     toStr(r['유무료']),
+    monthlyPrice: toNum(r['월정기권금액']),
+    spots:        toNum(r['주차면수']),
+    baseFee:      toNum(r['기본 주차 요금']),
+    baseMinutes:  toNum(r['기본 주차 시간(분 단위)']),
+    extraFee:     toNum(r['추가 단위 요금']),
+    ptype:        'public',
+    source:       'seoul_public',
+  })).filter(r => r.name && r.lat && r.lng);
+
+  /* neighbor_lots */
+  LOTS = nbrRows.map(r => ({
+    id:           toStr(r['주차장ID']),
+    name:         toStr(r['주차장명']),
+    addr:         toStr(r['주차장_주소']),
+    lat:          toNum(r['Latitude']),
+    lng:          toNum(r['Longitude']),
+    spots:        toNum(r['주차면수']),
+    s_sold:       toNum(r['정기권_판매량']) || 0,
+    s_price:      toNum(r['정기권_평균가']),
+    s_basis:      toStr(r['정기권_가격기준']),
+    daily_sold:   toNum(r['평일종일권_판매량']) || 0,
+    daily_price:  toNum(r['평일종일권_평균가']),
+    daily_basis:  toStr(r['평일종일권_가격기준']),
+    ptype:        (toNum(r['정기권_판매량'])>0 && toNum(r['평일종일권_판매량'])>0) ? 'both'
+                : toNum(r['정기권_판매량'])>0 ? 'season_only'
+                : toNum(r['평일종일권_판매량'])>0 ? 'park_only' : 'season_only',
+  })).filter(r => r.name && r.lat && r.lng);
+
+  console.log('✅ candidates:', CANDS.length, '/ public:', PUBLIC_LOTS.length, '/ neighbor_lots:', LOTS.length);
+  document.getElementById('sc').textContent = CANDS.length;
+  document.getElementById('sm').textContent = LOTS.length;
+}
+
+/* ── 마커 색상/뱃지 ── */
+function ptLabel(pt){
+  if(pt==='public') return '공영주차장';
+  return pt==='both'?'정기권+주차권':pt==='season_only'?'정기권만':pt==='park_only'?'주차권만':'기타';
+}
+function ptColor(pt){
+  if(pt==='public') return '#9CA3AF';
+  return pt==='both'?'#1A56DB':pt==='season_only'?'#DC2626':pt==='park_only'?'#EAB308':'#999';
+}
+function ptBadge(pt){
+  const cls = pt==='both'?'pt-both':pt==='season_only'?'pt-sea':pt==='park_only'?'pt-pk':'';
+  return `<span class="ptb ${cls}">&#9679; ${ptLabel(pt)}</span>`;
+}
+
+/* 배너 라벨 (마커 위 흰 팝업) */
+function mkNearLabel(n, selected=false){
+  const border = ptColor(n.ptype);
+  const top = selected ? '#1A1917' : border;
+
+  if(n.ptype === 'public'){
+    // 공영: 가격+주차면 보라색, 주차면 없으면 "주차면 데이터 없음"
+    const hasPrice = n.monthlyPrice != null && n.monthlyPrice > 0;
+    const spotsText = n.spots != null ? n.spots+'면' : '주차면 데이터 없음';
+    const infoColor = hasPrice ? '#7C3AED' : '#6F6B66';
+    return `<div style="transform:translateY(-10px);background:#fff;border:1px solid ${border};border-top:3px solid ${top};border-radius:8px;padding:5px 8px;box-shadow:0 4px 12px rgba(0,0,0,.15);min-width:110px;max-width:160px">
+      <div style="font-size:11px;font-weight:700;line-height:1.25;color:#1A1917;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.name}</div>
+      <div style="font-size:10px;color:${infoColor};margin-top:2px;font-weight:500">${hasPrice ? won(n.monthlyPrice)+' · '+spotsText : spotsText}</div>
+    </div>`;
+  }
+
+  // 일반 판매 주차장
+  const sText = (n.s_price != null && n.s_price > 0) ? `정기 ${won(n.s_price)}` : null;
+  const dText = (n.daily_price != null && n.daily_price > 0) ? `종일 ${won(n.daily_price)}` : null;
+  const priceText = [sText, dText].filter(Boolean).join(' · ') || '가격 없음';
+  return `<div style="transform:translateY(-10px);background:#fff;border:1px solid ${border};border-top:3px solid ${top};border-radius:8px;padding:5px 8px;box-shadow:0 4px 12px rgba(0,0,0,.15);min-width:110px;max-width:160px">
+    <div style="font-size:11px;font-weight:700;line-height:1.25;color:#1A1917;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.name}</div>
+    <div style="font-size:10px;color:#6F6B66;margin-top:2px;font-weight:500">${priceText}</div>
+  </div>`;
+}
+
+function getLocalLotMatches(q){
+  const qq = (q||'').trim();
+  if(!qq) return [];
+  return LOTS.filter(l => {
+    const name = l.name || '';
+    const addr = l.addr || '';
+    return name.includes(qq) || addr.includes(qq);
+  }).slice(0,8);
+}
+
+/* ── 지도 ── */
+let map=null, mapReady=false, placesSvc=null, geocoderSvc=null;
+const cMks={};
+let curC=null, curPool=[], selId=null, addrMk=null, radC=null;
+let nMks=[], nLbls=[], pubMks=[], pubLbls=[];
+let chInst=null, chInst2=null;
+
+const ALIASES = {
+  "현대백화점 천호점": "서울 강동구 천호대로 1005",
+  "현대 천호점":       "서울 강동구 천호대로 1005",
+};
+
+function makeNode(htmlStr){
+  const wrap = document.createElement('div');
+  wrap.innerHTML = htmlStr.trim();
+  return wrap.firstChild;
+}
+function latLng(lat,lng){ return new kakao.maps.LatLng(lat,lng); }
+
+function mkCand(sel){
+  const sz = sel ? 42 : 34;
+  const ring = sel ? '3px solid #1A56DB' : '2px solid rgba(255,255,255,0.9)';
+  return `<div style="width:${sz}px;height:${sz}px;border-radius:8px;border:${ring};overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.30);background:#102050;cursor:pointer">
+    <img src="${LOGO_URI}" style="width:100%;height:100%;object-fit:cover;display:block"/>
+  </div>`;
+}
+function mkNear(pt, sel=false){
+  const c = ptColor(pt);
+  const sz = sel ? 26 : (pt==='public' ? 14 : 20);
+  const border = pt==='public' ? '1px' : (sel?'3px':'2px');
+  return `<div style="width:${sz}px;height:${sz}px;background:${c};border:${border} solid #fff;border-radius:50%;box-shadow:0 1px 6px rgba(0,0,0,.2);cursor:pointer;opacity:${pt==='public'?0.7:1}"></div>`;
+}
+function mkTipHtml(title, sub=''){
+  return `<div style="padding:6px 8px;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.14);font-size:11px;line-height:1.45;white-space:nowrap">
+    <strong style="font-size:12px">${title}</strong>${sub?`<br><span style="color:#6F6B66">${sub}</span>`:''}
+  </div>`;
+}
+function makeOverlay(lat,lng,htmlStr,yAnchor=1){
+  const node = makeNode(htmlStr);
+  const ov = new kakao.maps.CustomOverlay({ position:latLng(lat,lng), content:node, yAnchor, zIndex:3 });
+  ov.setMap(map);
+  ov._node = node;
+  return ov;
+}
+function makeHoverTip(ov, htmlStr){
+  const tip = new kakao.maps.CustomOverlay({ position:ov.getPosition(), content:makeNode(htmlStr), yAnchor:1.9, zIndex:4 });
+  ov._node.addEventListener('mouseenter', ()=>tip.setMap(map));
+  ov._node.addEventListener('mouseleave', ()=>tip.setMap(null));
+  ov._tip = tip;
+}
+function removeOverlay(ov){
+  if(!ov) return;
+  if(ov._tip) ov._tip.setMap(null);
+  ov.setMap(null);
+}
+function initMap(){
+  map = new kakao.maps.Map(document.getElementById('map'), { center:latLng(37.53,127.0), level:8 });
+  placesSvc = new kakao.maps.services.Places();
+  geocoderSvc = new kakao.maps.services.Geocoder();
+  mapReady = true;
+}
+function fitCandidates(){
+  const pts = CANDS.filter(c=>c.lat&&c.lng);
+  if(!pts.length) return;
+  const bounds = new kakao.maps.LatLngBounds();
+  pts.forEach(c=>bounds.extend(latLng(c.lat,c.lng)));
+  map.setBounds(bounds,60,60,60,420);
+}
+function refreshCandidateMarker(c, selected=false){
+  const prev = cMks[c.id];
+  if(prev) removeOverlay(prev);
+  const ov = makeOverlay(c.lat, c.lng, mkCand(selected), 1);
+  ov._node.onclick = ()=>selCand(c);
+  makeHoverTip(ov, mkTipHtml(c.name, `${c.ftype||''} · ${c.spots||'?'}면`));
+  cMks[c.id] = ov;
+}
+function initMarkers(){
+  if(!mapReady) return;
+  Object.values(cMks).forEach(removeOverlay);
+  for(const k in cMks) delete cMks[k];
+
+  // 후보군 마커
+  CANDS.filter(c=>c.lat&&c.lng).forEach(c=>refreshCandidateMarker(c,false));
+
+  // 공영주차장 마커 (회색, 작게)
+  pubMks.forEach(removeOverlay); pubMks=[];
+  pubLbls.forEach(removeOverlay); pubLbls=[];
+  PUBLIC_LOTS.forEach(p=>{
+    const ov = makeOverlay(p.lat, p.lng, mkNear('public',false), 0.5);
+    makeHoverTip(ov, mkTipHtml(p.name, p.monthlyPrice ? '월 '+won(p.monthlyPrice) : '무료/정보없음'));
+    pubMks.push(ov);
+    if(p.monthlyPrice || p.spots) {
+      const lb = makeOverlay(p.lat, p.lng, mkNearLabel(p,false), 1.85);
+      pubLbls.push(lb);
+    }
+  });
+
+  fitCandidates();
+  console.log('✅ 마커 렌더링 완료 - 후보:', CANDS.length, '공영:', PUBLIC_LOTS.length);
+}
+
+function clrNear(){
+  nMks.forEach(removeOverlay); nMks=[];
+  nLbls.forEach(removeOverlay); nLbls=[];
+  if(radC){radC.setMap(null);radC=null;}
+}
+function renderRadius(lat,lng,color='#3D3BE8',fill='#EFEFFB'){
+  if(radC) radC.setMap(null);
+  radC = new kakao.maps.Circle({
+    center:latLng(lat,lng), radius:RADIUS,
+    strokeWeight:2, strokeColor:color, strokeOpacity:0.9,
+    fillColor:fill, fillOpacity:0.12, zIndex:1
+  });
+  radC.setMap(map);
+}
+function addNearbyMarkers(pool){
+  pool.forEach((n,i)=>{
+    const ov = makeOverlay(n.lat, n.lng, mkNear(n.ptype,false), 0.5);
+    ov._node.onclick = ()=>selNear(i);
+    const tipSub = `${ptLabel(n.ptype)} · ${n.s_price?won(n.s_price):'-'} / ${n.daily_price?won(n.daily_price):'-'} · ${n.spots||'?'}면`;
+    makeHoverTip(ov, mkTipHtml(n.name, tipSub));
+    nMks.push(ov);
+    const lb = makeOverlay(n.lat, n.lng, mkNearLabel(n,false), 1.85);
+    lb._node.style.cursor='pointer';
+    lb._node.onclick = ()=>selNear(i);
+    nLbls.push(lb);
+  });
+}
+function moveMap(lat,lng,level=4){
+  map.setLevel(level);
+  map.panTo(latLng(lat,lng));
+}
+
+/* ── 후보현장 선택 ── */
+function selCand(c){
+  clrNear();
+  if(selId && cMks[selId]) refreshCandidateMarker(CANDS.find(x=>x.id===selId)||{id:selId}, false);
+  if(addrMk){removeOverlay(addrMk);addrMk=null;}
+  selId=c.id; curC=c;
+  refreshCandidateMarker(c,true);
+  renderRadius(c.lat,c.lng,'#3D3BE8','#EFEFFB');
+  moveMap(c.lat,c.lng,4);
+  // 사이드바 활성 표시 동기화
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const sbEl = document.getElementById('sbi-'+c.id);
+  if(sbEl){ sbEl.classList.add('active'); sbEl.scrollIntoView({block:'nearest'}); }
+
+  // neighbor_lots에서 인근 주차장 필터 (이미 500m 이내 데이터지만 혹시 모를 필터 추가)
+  const pool = LOTS
+    .filter(p=>p.lat&&p.lng)
+    .map(p=>{const cp={...p};cp.dist=Math.round(hav(c.lat,c.lng,p.lat,p.lng));return cp;})
+    .sort((a,b)=>a.dist-b.dist)
+    .slice(0,CFG.maxNearby);
+  curPool=pool;
+  addNearbyMarkers(pool);
+
+  document.getElementById('ssel').style.display='flex';
+  document.getElementById('ssn').textContent=c.name;
+  renderCandPanel(c,pool);
+}
+
+function selAddr(lat,lng,name,addr){
+  clrNear();
+  if(selId){
+    const prev=CANDS.find(x=>x.id===selId);
+    if(prev) refreshCandidateMarker(prev,false);
+    selId=null;
+  }
+  if(addrMk) removeOverlay(addrMk);
+  addrMk = makeOverlay(lat,lng,`<div style="width:32px;height:32px;border-radius:8px;overflow:hidden;box-shadow:0 0 0 2px #FF6B6B,0 2px 8px rgba(0,0,0,.3)"><img src="${LOGO_URI}" width="32" height="32" style="object-fit:cover;display:block"/></div>`,1);
+  makeHoverTip(addrMk, mkTipHtml(name, addr||''));
+  moveMap(lat,lng,3);
+  renderRadius(lat,lng,'#FF6B6B','#FFE0E0');
+
+  const pool = LOTS
+    .filter(p=>p.lat&&p.lng&&hav(lat,lng,p.lat,p.lng)<=RADIUS)
+    .map(p=>{const cp={...p};cp.dist=Math.round(hav(lat,lng,p.lat,p.lng));return cp;})
+    .sort((a,b)=>a.dist-b.dist)
+    .slice(0,CFG.maxNearby);
+  curPool=pool;
+  addNearbyMarkers(pool);
+
+  const pseudo={id:'__addr',name,addr,ftype:'검색 위치',spots:null,contract:'',lat,lng};
+  curC=pseudo;
+  document.getElementById('ssel').style.display='flex';
+  document.getElementById('ssn').textContent=name;
+  renderCandPanel(pseudo,pool);
+}
+
+/* ── 인근현장 클릭 ── */
+function selNear(idx){
+  const n=curPool[idx];
+  if(!n) return;
+  nMks.forEach(removeOverlay); nLbls.forEach(removeOverlay);
+  nMks=[]; nLbls=[];
+  curPool.forEach((item,i)=>{
+    const ov=makeOverlay(item.lat,item.lng,mkNear(item.ptype,i===idx),0.5);
+    ov._node.onclick=()=>selNear(i);
+    const tipSub=`${ptLabel(item.ptype)} · ${item.s_price?won(item.s_price):'-'} / ${item.daily_price?won(item.daily_price):'-'}`;
+    makeHoverTip(ov,mkTipHtml(item.name,tipSub));
+    nMks.push(ov);
+    const lb=makeOverlay(item.lat,item.lng,mkNearLabel(item,i===idx),1.9);
+    lb._node.style.cursor='pointer';
+    lb._node.onclick=()=>selNear(i);
+    nLbls.push(lb);
+  });
+  moveMap(n.lat,n.lng,3);
+  renderNearDetail(n);
+}
+
+/* ── 후보현장 패널 ── */
+function renderCandPanel(c, pool){
+  if(chInst){chInst.destroy();chInst=null;}
+  if(chInst2){chInst2.destroy();chInst2=null;}
+  const pnl=document.getElementById('pnl');
+  pnl.classList.remove('wide');
+
+  const hasSeasonPool = pool.filter(p=>p.s_sold>0||p.s_price!=null);
+  const hasDailyPool  = pool.filter(p=>p.daily_sold>0||p.daily_price!=null);
+  const seasonPrices = hasSeasonPool.map(p=>p.s_price).filter(v=>v!=null&&v>0).sort((a,b)=>a-b);
+  const dailyPrices  = hasDailyPool.map(p=>p.daily_price).filter(v=>v!=null&&v>0).sort((a,b)=>a-b);
+  const medSeason = seasonPrices.length ? seasonPrices[Math.floor(seasonPrices.length/2)] : null;
+  const medDaily  = dailyPrices.length  ? dailyPrices[Math.floor(dailyPrices.length/2)]  : null;
+  const totalSSold = hasSeasonPool.reduce((s,p)=>s+safe(p.s_sold),0);
+  const totalDSold = hasDailyPool.reduce((s,p)=>s+safe(p.daily_sold),0);
+
+  const mc = (k,v,s='') => `<div class="hero-metric"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+
+  pnl.innerHTML = `
+    <div class="sec" style="background:var(--bg)">
+      <div class="stag"><span class="sn2 green">★</span>${c.id==='__addr'?'검색 위치':'후보 현장'}</div>
+      <div class="site-name">${c.name}</div>
+      <div class="pills">
+        ${c.ftype?`<span class="pill pill-acc">${c.ftype}</span>`:''}
+        ${c.spots?`<span class="pill pill-grn">총 ${num(c.spots)}면</span>`:''}
+        ${c.contract?`<span class="pill">${c.contract}</span>`:''}
+        ${c.parkingMethod?`<span class="pill">${c.parkingMethod}</span>`:''}
+      </div>
+      <div class="basis">${c.addr||''}</div>
+    </div>
+
+    ${c.seasonAvgPrice||c.weekdayDailyAvgPrice||c.dailyAvgPrice ? `
+    <div class="sec">
+      <div class="stag"><span class="sn2 red">S</span>후보현장 참고 시세 (candidates 기준)</div>
+      <div class="mg3">
+        ${mc('정기권 평균가', won(c.seasonAvgPrice), '인근 정기권 기준')}
+        ${mc('평일종일권 평균가', won(c.weekdayDailyAvgPrice), '인근 평일종일권')}
+        ${mc('종일권 평균가', won(c.dailyAvgPrice), '인근 종일권')}
+      </div>
+      <div class="mg2" style="margin-top:6px">
+        ${mc('현재 적용 반경', RADIUS+'m', '슬라이더로 조정 가능')}
+        ${mc('반경 내 현장수', pool.length+'개', 'neighbor_lots 기준')}
+      </div>
+      <div class="mg2" style="margin-top:6px">
+        ${mc('정기권 상품수', num(c.seasonProductCount), '인근 상품 수')}
+        ${mc('종일권 상품수', num(c.dailyProductCount), '인근 상품 수')}
+      </div>
+      ${c.seasonNearbyNames?`<div class="dnote">정기권 인근: ${c.seasonNearbyNames}</div>`:''}
+      ${c.dailyNearbyNames?`<div class="dnote">종일권 인근: ${c.dailyNearbyNames}</div>`:''}
+    </div>` : ''}
+
+    ${pool.length===0 ? `
+      <div class="sec"><p style="font-size:13px;color:var(--t2);text-align:center;padding:20px 0">반경 내 neighbor_lots 데이터 없음</p></div>
+    ` : `
+      <div class="sec">
+        <div class="stag"><span class="sn2">↗</span>인근 현장 종합 (neighbor_lots 기준)</div>
+        <div class="hero-grid">
+          ${mc('정기권 중앙가', won(medSeason), `${hasSeasonPool.length}개 현장 기준`)}
+          ${mc('정기권 판매량', num(totalSSold), '합산 판매량')}
+          ${mc('종일권 중앙가', won(medDaily), `${hasDailyPool.length}개 현장 기준`)}
+          ${mc('종일권 판매량', num(totalDSold), '합산 판매량')}
+        </div>
+      </div>
+      <div class="sec">
+        <div class="stag"><span class="sn2">차트</span>인근 현장별 판매량 비교</div>
+        <div class="chart-wrap tall"><canvas id="poolChart"></canvas></div>
+      </div>
+    `}
+
+    <div>
+      <div class="nhead">인근 판매 현장 (클릭하면 상세)</div>
+      ${pool.map((n,i)=>{
+        const sText = n.s_price!=null&&n.s_price>0 ? won(n.s_price) : '-';
+        const dText = n.daily_price!=null&&n.daily_price>0 ? won(n.daily_price) : '-';
+        return `
+          <div class="nc" onclick="selNear(${i})">
+            <div class="nc-l">
+              ${ptBadge(n.ptype)}
+              <div class="nn">${n.name}</div>
+              <div class="nm">${n.dist}m · ${n.spots||'?'}면 · 정기 ${num(n.s_sold)}건 · 종일 ${num(n.daily_sold)}건</div>
+            </div>
+            <div class="nc-r">
+              <div class="np">정기 ${sText}</div>
+              <div style="font-size:11px;color:var(--t3)">종일 ${dText}</div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+  if(pool.length>0) setTimeout(()=>drawPoolChart(pool),50);
+}
+
+/* ── 인근 현장 상세 패널 ── */
+function renderNearDetail(n){
+  if(chInst){chInst.destroy();chInst=null;}
+  if(chInst2){chInst2.destroy();chInst2=null;}
+  const pnl=document.getElementById('pnl');
+  pnl.classList.remove('wide');
+
+  const mc = (k,v,s='') => `<div class="hero-metric"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+
+  pnl.innerHTML = `
+    <div class="bbtn" id="bbtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      ${curC?curC.name:'이전 화면'}으로 돌아가기
+    </div>
+    <div class="sec" style="background:var(--bg)">
+      ${ptBadge(n.ptype)}
+      <div class="site-name">${n.name}</div>
+      <div class="pills">
+        <span class="pill">${n.dist}m 거리</span>
+        ${n.spots?`<span class="pill pill-grn">${n.spots}면</span>`:''}
+      </div>
+      <div class="basis">${n.addr||''}</div>
+    </div>
+
+    ${n.s_price!=null||n.s_sold>0 ? `
+    <div class="sec" style="background:var(--bg)">
+      <div class="stag"><span class="sn2 red">S</span>정기권 실적</div>
+      <div class="mg2">
+        ${mc('정기권 평균가', won(n.s_price), n.s_basis||'가격 기준')}
+        ${mc('정기권 판매량', num(n.s_sold)+'건', 'neighbor_lots 기준')}
+      </div>
+    </div>` : ''}
+
+    ${n.daily_price!=null||n.daily_sold>0 ? `
+    <div class="sec" style="background:var(--bg)">
+      <div class="stag"><span class="sn2 park">P</span>평일종일권 실적</div>
+      <div class="mg2">
+        ${mc('평일종일권 평균가', won(n.daily_price), n.daily_basis||'가격 기준')}
+        ${mc('평일종일권 판매량', num(n.daily_sold)+'건', 'neighbor_lots 기준')}
+      </div>
+    </div>` : ''}
+
+    ${n.s_sold===0&&n.daily_sold===0&&n.s_price==null&&n.daily_price==null ? `
+    <div class="sec"><p style="font-size:13px;color:var(--t2);text-align:center;padding:20px 0">판매 데이터 없음</p></div>
+    ` : ''}
+  `;
+
+  document.getElementById('bbtn').addEventListener('click',()=>{
+    pnl.classList.remove('wide');
+    renderCandPanel(curC,curPool);
+  });
+}
+
+/* ── 차트 ── */
+function drawPoolChart(pool){
+  const ctx=document.getElementById('poolChart');
+  if(!ctx) return;
+  if(chInst){chInst.destroy();}
+  const labels=pool.map(p=>p.name.length>10?p.name.slice(0,10)+'…':p.name);
+  chInst=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'정기권 판매량',data:pool.map(p=>safe(p.s_sold)),backgroundColor:'#DC2626CC',borderRadius:3},
+        {label:'종일권 판매량',data:pool.map(p=>safe(p.daily_sold)),backgroundColor:'#D97706CC',borderRadius:3},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,usePointStyle:true,font:{size:10}}}},
+      scales:{
+        x:{ticks:{maxRotation:0,autoSkip:false,font:{size:9},color:'#A89F97'}},
+        y:{beginAtZero:true,ticks:{font:{size:10},color:'#A89F97'}}
+      }
+    }
+  });
+}
+
+/* ── 검색 ── */
+function esc(s){ return String(s??'').replace(/[&<>"']/g,ch=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch])); }
+
+function showDrop(cands, places, lotMatches=[]){
+  const sdEl=document.getElementById('sd');
+  const items=[];
+  (cands||[]).forEach(c=>{
+    if(!(c&&c.lat&&c.lng)) return;
+    items.push(`<div class="si" data-kind="cand" data-id="${esc(c.id)}" data-name="${esc(c.name)}" data-addr="${esc(c.addr||'')}" data-lat="${c.lat}" data-lng="${c.lng}">
+      <div class="sn">${esc(c.name)} <span class="sbg sb-c">후보현장</span></div>
+      <div class="sa">${esc(c.addr||'')}</div>
+    </div>`);
+  });
+  (lotMatches||[]).forEach(l=>{
+    items.push(`<div class="si" data-kind="lot" data-id="${l.id}" data-name="${esc(l.name)}" data-addr="${esc(l.addr||'')}" data-lat="${l.lat}" data-lng="${l.lng}">
+      <div class="sn">${esc(l.name)} <span class="sbg sb-n">판매현장</span></div>
+      <div class="sa">${l.s_price?won(l.s_price):'-'} / ${l.daily_price?won(l.daily_price):'-'} · ${esc(l.addr||'')}</div>
+    </div>`);
+  });
+  (places||[]).forEach(p=>{
+    items.push(`<div class="si" data-kind="place" data-name="${esc(p.name)}" data-addr="${esc(p.addr||'')}" data-lat="${p.lat}" data-lng="${p.lng}">
+      <div class="sn">${esc(p.name)} <span class="sbg sb-a">장소검색</span></div>
+      <div class="sa">${esc(p.addr||'')}</div>
+    </div>`);
+  });
+  sdEl.innerHTML = items.length ? items.join('') : `<div class="si" style="cursor:default"><div class="sn">검색 결과 없음</div></div>`;
+  sdEl.style.display='block';
+}
+
+const siEl=document.getElementById('si');
+const sdEl=document.getElementById('sd');
+const loader=document.getElementById('loading');
+let stmr=null;
+
+siEl.addEventListener('input',function(){
+  clearTimeout(stmr);
+  const q=this.value.trim();
+  if(!q){sdEl.style.display='none';return;}
+  const ch=CANDS.filter(c=>(c.name&&c.name.includes(q))||(c.addr&&c.addr.includes(q))).slice(0,5);
+  const lm=getLocalLotMatches(q);
+  showDrop(ch,[],lm);
+  stmr=setTimeout(()=>doSearch(q,ch,lm),350);
+});
+
+siEl.addEventListener('keydown',function(e){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  clearTimeout(stmr);
+  const q=this.value.trim();
+  if(!q){sdEl.style.display='none';return;}
+  const ch=CANDS.filter(c=>(c.name&&c.name.includes(q))||(c.addr&&c.addr.includes(q))).slice(0,5);
+  const lm=getLocalLotMatches(q);
+  doSearch(q,ch,lm);
+});
+
+async function doSearch(q,ch,lm=[]){
+  loader.style.display='inline';
+  try{
+    const results=await searchPlace(q);
+    showDrop(ch,results,lm);
+  }catch(e){
+    sdEl.innerHTML=`<div class="si" style="cursor:default"><div class="sn">검색 오류</div><div class="sa">카카오 JS 키 및 도메인 설정을 확인하세요.</div></div>`;
+    sdEl.style.display='block';
+  }finally{loader.style.display='none';}
+}
+
+async function searchPlace(q){
+  if(!mapReady||!placesSvc||!geocoderSvc) throw new Error('지도 서비스 준비 안됨');
+  const results=[],seen=new Set();
+  const alias=ALIASES[q];
+  function add(name,addr,lat,lng){
+    if(isNaN(lat)||isNaN(lng)) return;
+    const key=`${lat.toFixed(5)},${lng.toFixed(5)}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    results.push({name,addr,lat,lng});
+  }
+  const kw=q=>new Promise(r=>{
+    placesSvc.keywordSearch(q,(data,status)=>{
+      r(status===kakao.maps.services.Status.OK?data:[]);
+    },{size:6});
+  });
+  const ad=q=>new Promise(r=>{
+    geocoderSvc.addressSearch(q,(data,status)=>{
+      r(status===kakao.maps.services.Status.OK?data:[]);
+    });
+  });
+  (await kw(q)).forEach(p=>add(p.place_name,p.road_address_name||p.address_name,parseFloat(p.y),parseFloat(p.x)));
+  if(alias)(await kw(alias)).forEach(p=>add(p.place_name,p.road_address_name||p.address_name,parseFloat(p.y),parseFloat(p.x)));
+  if(results.length<4)(await ad(q)).forEach(p=>{
+    const a=(p.road_address&&p.road_address.address_name)||(p.address&&p.address.address_name)||q;
+    add(q,a,parseFloat(p.y),parseFloat(p.x));
+  });
+  return results.slice(0,6);
+}
+
+sdEl.addEventListener('click',function(e){
+  const it=e.target.closest('.si');if(!it)return;
+  const lat=parseFloat(it.dataset.lat),lng=parseFloat(it.dataset.lng);
+  const kind=it.dataset.kind;
+  if(kind==='cand'){
+    const c=CANDS.find(x=>x.id===it.dataset.id);
+    if(c&&c.lat) selCand(c);
+  }else if(kind==='lot'){
+    const lot=LOTS.find(x=>String(x.id)===String(it.dataset.id));
+    if(lot){
+      moveMap(lot.lat,lot.lng,3);
+      curPool=[lot];
+      addNearbyMarkers(curPool);
+      renderNearDetail(lot);
+    }
+  }else if(!isNaN(lat)){
+    selAddr(lat,lng,it.dataset.name,it.dataset.addr);
+  }
+  siEl.value=it.dataset.name;
+  sdEl.style.display='none';
+});
+
+document.addEventListener('click',e=>{if(!e.target.closest('.sw'))sdEl.style.display='none';});
+
+document.getElementById('rs').addEventListener('input',function(){
+  RADIUS=parseInt(this.value);
+  document.getElementById('rv').textContent=RADIUS>=1000?(RADIUS/1000).toFixed(1)+'km':RADIUS+'m';
+  if(curC&&curC.lat){
+    if(curC.id==='__addr') selAddr(curC.lat,curC.lng,curC.name,curC.addr);
+    else{const c=CANDS.find(x=>x.id===curC.id);if(c) selCand(c);}
+  }
+});
+
+/* ── 공영주차장 토글 ── */
+let pubVisible = true;
+function togglePublic(){
+  pubVisible = !pubVisible;
+  const btn = document.getElementById('pubToggle');
+  btn.classList.toggle('on', pubVisible);
+  pubMks.forEach(ov => ov.setMap(pubVisible ? map : null));
+  pubLbls.forEach(ov => ov.setMap(pubVisible ? map : null));
+}
+
+/* ── 사이드바 ── */
+let sbCollapsed = false;
+let sbFiltered = [];
+
+function toggleSidebar(){
+  sbCollapsed = !sbCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sbCollapsed);
+  document.getElementById('sbToggle').textContent = sbCollapsed ? '❯' : '❮';
+}
+
+function renderSidebar(list){
+  const el = document.getElementById('sb-list');
+  if(!list.length){
+    el.innerHTML = '<div style="padding:16px 12px;font-size:11px;color:var(--t3);text-align:center">검색 결과 없음</div>';
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const price = c.seasonAvgPrice ? '정기 '+won(c.seasonAvgPrice) : (c.weekdayDailyAvgPrice ? '종일 '+won(c.weekdayDailyAvgPrice) : '가격 정보 없음');
+    return `<div class="sb-item" id="sbi-${c.id}" onclick="sbSelect('${c.id}')">
+      <div class="sb-name">${c.name}</div>
+      <div class="sb-info">
+        ${c.ftype?`<span class="sb-tag">${c.ftype}</span>`:''}
+        ${c.spots?`<span class="sb-tag">${c.spots}면</span>`:''}
+        <span class="sb-tag">${price}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterSidebar(q){
+  const qq = (q||'').trim();
+  sbFiltered = qq ? CANDS.filter(c=>c.name.includes(qq)||c.addr.includes(qq)) : CANDS;
+  document.getElementById('sbCount').textContent = sbFiltered.length+'개';
+  renderSidebar(sbFiltered);
+}
+
+function sbSelect(id){
+  const c = CANDS.find(x=>x.id===id);
+  if(!c) return;
+  // 활성 표시
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const el = document.getElementById('sbi-'+id);
+  if(el) el.classList.add('active');
+  selCand(c);
+}
+
+function initSidebar(){
+  sbFiltered = CANDS;
+  document.getElementById('sbCount').textContent = CANDS.length+'개';
+  renderSidebar(CANDS);
+}
+
+kakao.maps.load(()=>{
+  try{ initMap(); }catch(e){console.error('지도 초기화 실패:',e);}
+  loadData().then(()=>{
+    initMarkers();
+    initSidebar();
+  }).catch(e=>{
+    console.error('❌ 데이터 로딩 실패:', e);
+    document.getElementById('pnl').innerHTML=`
+      <div class="pe">
+        <div class="pe-ico">&#9888;</div>
+        <div class="pe-t">데이터 로딩 실패</div>
+        <div class="pe-s">SHEET_ID를 실제 구글 스프레드시트 ID로 변경해주세요.<br>콘솔(F12)에서 오류를 확인하세요.</div>
+      </div>`;
+  });
+});
+</script>
+</body>
+</html>

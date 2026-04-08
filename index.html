@@ -621,9 +621,8 @@ function selAddr(lat,lng,name,addr){
   renderRadius(lat,lng,'#FF6B6B','#FFE0E0');
 
   const pool = LOTS
-    .filter(p=>p.lat&&p.lng)
-    .map(p=>{const cp={...p};cp.dist=Math.round(hav(c.lat,c.lng,p.lat,p.lng));return cp;})
-    .filter(p=>p.dist<=RADIUS)
+    .filter(p=>p.lat&&p.lng&&hav(lat,lng,p.lat,p.lng)<=RADIUS)
+    .map(p=>{const cp={...p};cp.dist=Math.round(hav(lat,lng,p.lat,p.lng));return cp;})
     .sort((a,b)=>a.dist-b.dist)
     .slice(0,CFG.maxNearby);
   curPool=pool;
@@ -758,6 +757,48 @@ function renderNearDetail(n){
 
   const mc = (k,v,s='') => `<div class="hero-metric"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
 
+  // 보유 데이터 판단
+  const hasSeason = n.s_price!=null || n.s_sold>0;
+  const hasDaily  = n.daily_price!=null || n.daily_sold>0;
+
+  // 1번: 둘 다 있음 / 2번: 종일권만 / 3번: 정기권만
+  let metricsHtml = '';
+  if(hasSeason && hasDaily){
+    // 1번: 4개 수치 모두
+    metricsHtml = `
+    <div class="sec">
+      <div class="stag"><span class="sn2" style="background:#1A56DB">S+P</span>정기권 + 평일종일권 실적</div>
+      <div class="hero-grid">
+        ${mc('정기권 판매량', num(n.s_sold)+'건', '3개월 기준')}
+        ${mc('정기권 평균가', won(n.s_price), n.s_basis||'-')}
+        ${mc('종일권 판매량', num(n.daily_sold)+'건', '3개월 기준')}
+        ${mc('종일권 평균가', won(n.daily_price), n.daily_basis||'-')}
+      </div>
+    </div>`;
+  } else if(hasDaily){
+    // 2번: 종일권만
+    metricsHtml = `
+    <div class="sec">
+      <div class="stag"><span class="sn2 park">P</span>평일종일권 실적</div>
+      <div class="mg2">
+        ${mc('종일권 판매량', num(n.daily_sold)+'건', '3개월 기준')}
+        ${mc('종일권 평균가', won(n.daily_price), n.daily_basis||'-')}
+      </div>
+    </div>`;
+  } else if(hasSeason){
+    // 3번: 정기권만
+    metricsHtml = `
+    <div class="sec">
+      <div class="stag"><span class="sn2 red">S</span>정기권 실적</div>
+      <div class="mg2">
+        ${mc('정기권 판매량', num(n.s_sold)+'건', '3개월 기준')}
+        ${mc('정기권 평균가', won(n.s_price), n.s_basis||'-')}
+      </div>
+    </div>`;
+  } else {
+    metricsHtml = `<div class="sec"><p style="font-size:13px;color:var(--t2);text-align:center;padding:20px 0">판매 데이터 없음</p></div>`;
+  }
+
   pnl.innerHTML = `
     <div class="bbtn" id="bbtn">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--t2)" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -768,32 +809,11 @@ function renderNearDetail(n){
       <div class="site-name">${n.name}</div>
       <div class="pills">
         <span class="pill">${n.dist}m 거리</span>
-        ${n.spots?`<span class="pill pill-grn">${n.spots}면</span>`:''}
+        <span class="pill pill-grn">${n.spots ? n.spots+'면' : '주차면 정보 없음'}</span>
       </div>
       <div class="basis">${n.addr||''}</div>
     </div>
-
-    ${n.s_price!=null||n.s_sold>0 ? `
-    <div class="sec" style="background:var(--bg)">
-      <div class="stag"><span class="sn2 red">S</span>정기권 실적</div>
-      <div class="mg2">
-        ${mc('정기권 평균가', won(n.s_price), n.s_basis||'가격 기준')}
-        ${mc('정기권 판매량', num(n.s_sold)+'건', 'neighbor_lots 기준')}
-      </div>
-    </div>` : ''}
-
-    ${n.daily_price!=null||n.daily_sold>0 ? `
-    <div class="sec" style="background:var(--bg)">
-      <div class="stag"><span class="sn2 park">P</span>평일종일권 실적</div>
-      <div class="mg2">
-        ${mc('평일종일권 평균가', won(n.daily_price), n.daily_basis||'가격 기준')}
-        ${mc('평일종일권 판매량', num(n.daily_sold)+'건', 'neighbor_lots 기준')}
-      </div>
-    </div>` : ''}
-
-    ${n.s_sold===0&&n.daily_sold===0&&n.s_price==null&&n.daily_price==null ? `
-    <div class="sec"><p style="font-size:13px;color:var(--t2);text-align:center;padding:20px 0">판매 데이터 없음</p></div>
-    ` : ''}
+    ${metricsHtml}
   `;
 
   document.getElementById('bbtn').addEventListener('click',()=>{

@@ -166,6 +166,31 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--b
 .li{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t3)}
 .ld{width:8px;height:8px;border-radius:50%}
 .loader{display:none;font-size:11px;color:var(--acc);margin-left:6px}
+
+/* ── 공영 토글 버튼 ── */
+.toggle-btn{height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--b2);background:var(--bg);font-size:11px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.toggle-btn.on{background:#F3F0FF;color:#5B21B6;border-color:#C4B5FD}
+.toggle-btn .tdot{width:7px;height:7px;border-radius:50%;background:#9CA3AF;flex-shrink:0}
+.toggle-btn.on .tdot{background:#7C3AED}
+
+/* ── 후보군 사이드바 ── */
+#sidebar{width:220px;flex-shrink:0;background:var(--w);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden;transition:width .2s}
+#sidebar.collapsed{width:0}
+#sb-hdr{padding:10px 12px 8px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.sb-title{font-size:12px;font-weight:600;color:var(--t2)}
+.sb-count{font-size:11px;color:var(--t3);margin-left:4px}
+#sb-search{padding:6px 10px;border-bottom:1px solid var(--b1);flex-shrink:0}
+#sb-search input{width:100%;height:26px;padding:0 8px;border:1px solid var(--b2);border-radius:4px;font-size:11px;font-family:var(--sans);background:var(--bg);outline:none}
+#sb-search input:focus{border-color:var(--acc)}
+#sb-list{flex:1;overflow-y:auto}
+.sb-item{padding:8px 12px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .1s}
+.sb-item:hover{background:var(--bg)}
+.sb-item.active{background:var(--abg);border-left:2px solid var(--acc)}
+.sb-item .sb-name{font-size:12px;font-weight:500;color:var(--t1);margin-bottom:2px;line-height:1.3}
+.sb-item .sb-info{font-size:10px;color:var(--t3);display:flex;gap:5px;flex-wrap:wrap;margin-top:2px}
+.sb-tag{background:var(--bg);border:1px solid var(--b1);border-radius:3px;padding:1px 4px}
+.sb-toggle{width:16px;background:var(--bg);border-right:1px solid var(--b1);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:10px;flex-shrink:0}
+.sb-toggle:hover{background:var(--b1)}
 </style>
 </head>
 <body>
@@ -184,10 +209,22 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--b
     <span class="rv" id="rv">500m</span>
   </div>
   <div class="hright">
+    <button class="toggle-btn on" id="pubToggle" onclick="togglePublic()">
+      <span class="tdot"></span>공영주차장
+    </button>
     <span id="loading" class="loader">검색 중...</span>
   </div>
 </div>
 <div id="main">
+  <div class="sb-toggle" id="sbToggle" onclick="toggleSidebar()" title="후보군 목록">❮</div>
+  <div id="sidebar">
+    <div id="sb-hdr">
+      <span class="sb-title">후보 현장 목록</span>
+      <span class="sb-count" id="sbCount"></span>
+    </div>
+    <div id="sb-search"><input type="text" id="sbInput" placeholder="이름 검색..." oninput="filterSidebar(this.value)"/></div>
+    <div id="sb-list"></div>
+  </div>
   <div id="map"></div>
   <div id="pnl">
     <div class="pe">
@@ -202,9 +239,10 @@ html,body{height:100%;overflow:hidden;font-family:var(--sans);background:var(--b
   <div class="sti"><div class="std" style="background:#888"></div>판매 현장 <span id="sm" style="font-weight:500;color:var(--t1);margin-left:2px">...</span>개</div>
   <div class="sti" id="ssel" style="display:none"><div class="std" style="background:var(--amb)"></div><span id="ssn"></span></div>
   <div class="leg">
-    <div class="li"><div class="ld" style="background:#16A34A"></div>정기권+주차권</div>
+    <div class="li"><div class="ld" style="background:#1A56DB"></div>정기권+주차권</div>
     <div class="li"><div class="ld" style="background:#DC2626"></div>정기권만</div>
     <div class="li"><div class="ld" style="background:#EAB308"></div>주차권만</div>
+    <div class="li"><div class="ld" style="background:#9CA3AF"></div>공영</div>
     <div class="li"><div class="ld" style="background:var(--acc)"></div>★ 후보현장</div>
   </div>
 </div>
@@ -549,12 +587,15 @@ function selCand(c){
   refreshCandidateMarker(c,true);
   renderRadius(c.lat,c.lng,'#3D3BE8','#EFEFFB');
   moveMap(c.lat,c.lng,4);
+  // 사이드바 활성 표시 동기화
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const sbEl = document.getElementById('sbi-'+c.id);
+  if(sbEl){ sbEl.classList.add('active'); sbEl.scrollIntoView({block:'nearest'}); }
 
   // neighbor_lots에서 인근 주차장 필터 (이미 500m 이내 데이터지만 혹시 모를 필터 추가)
-const pool = LOTS
+  const pool = LOTS
     .filter(p=>p.lat&&p.lng)
     .map(p=>{const cp={...p};cp.dist=Math.round(hav(c.lat,c.lng,p.lat,p.lng));return cp;})
-    .filter(p=>p.dist<=RADIUS)
     .sort((a,b)=>a.dist-b.dist)
     .slice(0,CFG.maxNearby);
   curPool=pool;
@@ -581,7 +622,6 @@ function selAddr(lat,lng,name,addr){
   const pool = LOTS
     .filter(p=>p.lat&&p.lng&&hav(lat,lng,p.lat,p.lng)<=RADIUS)
     .map(p=>{const cp={...p};cp.dist=Math.round(hav(lat,lng,p.lat,p.lng));return cp;})
-    .filter(p=>p.dist<=RADIUS)
     .sort((a,b)=>a.dist-b.dist)
     .slice(0,CFG.maxNearby);
   curPool=pool;
@@ -846,7 +886,7 @@ async function doSearch(q,ch,lm=[]){
     const results=await searchPlace(q);
     showDrop(ch,results,lm);
   }catch(e){
-    sdEl.innerHTML=`<div class="si" style="cursor:default"><div class="sn">검색 오류</div><div class="sa">${e.message}</div></div>`;
+    sdEl.innerHTML=`<div class="si" style="cursor:default"><div class="sn">검색 오류</div><div class="sa">카카오 JS 키 및 도메인 설정을 확인하세요.</div></div>`;
     sdEl.style.display='block';
   }finally{loader.style.display='none';}
 }
@@ -914,10 +954,73 @@ document.getElementById('rs').addEventListener('input',function(){
   }
 });
 
+/* ── 공영주차장 토글 ── */
+let pubVisible = true;
+function togglePublic(){
+  pubVisible = !pubVisible;
+  const btn = document.getElementById('pubToggle');
+  btn.classList.toggle('on', pubVisible);
+  pubMks.forEach(ov => ov.setMap(pubVisible ? map : null));
+  pubLbls.forEach(ov => ov.setMap(pubVisible ? map : null));
+}
+
+/* ── 사이드바 ── */
+let sbCollapsed = false;
+let sbFiltered = [];
+
+function toggleSidebar(){
+  sbCollapsed = !sbCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sbCollapsed);
+  document.getElementById('sbToggle').textContent = sbCollapsed ? '❯' : '❮';
+}
+
+function renderSidebar(list){
+  const el = document.getElementById('sb-list');
+  if(!list.length){
+    el.innerHTML = '<div style="padding:16px 12px;font-size:11px;color:var(--t3);text-align:center">검색 결과 없음</div>';
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const price = c.seasonAvgPrice ? '정기 '+won(c.seasonAvgPrice) : (c.weekdayDailyAvgPrice ? '종일 '+won(c.weekdayDailyAvgPrice) : '가격 정보 없음');
+    return `<div class="sb-item" id="sbi-${c.id}" onclick="sbSelect('${c.id}')">
+      <div class="sb-name">${c.name}</div>
+      <div class="sb-info">
+        ${c.ftype?`<span class="sb-tag">${c.ftype}</span>`:''}
+        ${c.spots?`<span class="sb-tag">${c.spots}면</span>`:''}
+        <span class="sb-tag">${price}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterSidebar(q){
+  const qq = (q||'').trim();
+  sbFiltered = qq ? CANDS.filter(c=>c.name.includes(qq)||c.addr.includes(qq)) : CANDS;
+  document.getElementById('sbCount').textContent = sbFiltered.length+'개';
+  renderSidebar(sbFiltered);
+}
+
+function sbSelect(id){
+  const c = CANDS.find(x=>x.id===id);
+  if(!c) return;
+  // 활성 표시
+  document.querySelectorAll('.sb-item').forEach(el=>el.classList.remove('active'));
+  const el = document.getElementById('sbi-'+id);
+  if(el) el.classList.add('active');
+  selCand(c);
+}
+
+function initSidebar(){
+  sbFiltered = CANDS;
+  document.getElementById('sbCount').textContent = CANDS.length+'개';
+  renderSidebar(CANDS);
+}
+
 kakao.maps.load(()=>{
   try{ initMap(); }catch(e){console.error('지도 초기화 실패:',e);}
   loadData().then(()=>{
     initMarkers();
+    initSidebar();
   }).catch(e=>{
     console.error('❌ 데이터 로딩 실패:', e);
     document.getElementById('pnl').innerHTML=`

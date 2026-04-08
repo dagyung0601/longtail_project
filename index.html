@@ -596,6 +596,7 @@ function selCand(c){
   const pool = LOTS
     .filter(p=>p.lat&&p.lng)
     .map(p=>{const cp={...p};cp.dist=Math.round(hav(c.lat,c.lng,p.lat,p.lng));return cp;})
+    .filter(p=>p.dist<=RADIUS)
     .sort((a,b)=>a.dist-b.dist)
     .slice(0,CFG.maxNearby);
   curPool=pool;
@@ -620,8 +621,9 @@ function selAddr(lat,lng,name,addr){
   renderRadius(lat,lng,'#FF6B6B','#FFE0E0');
 
   const pool = LOTS
-    .filter(p=>p.lat&&p.lng&&hav(lat,lng,p.lat,p.lng)<=RADIUS)
-    .map(p=>{const cp={...p};cp.dist=Math.round(hav(lat,lng,p.lat,p.lng));return cp;})
+    .filter(p=>p.lat&&p.lng)
+    .map(p=>{const cp={...p};cp.dist=Math.round(hav(c.lat,c.lng,p.lat,p.lng));return cp;})
+    .filter(p=>p.dist<=RADIUS)
     .sort((a,b)=>a.dist-b.dist)
     .slice(0,CFG.maxNearby);
   curPool=pool;

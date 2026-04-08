@@ -276,7 +276,11 @@ const SHEET_NAMES = {
 };
 
 /* ── 유틸 ── */
-const won  = v => (v != null && !isNaN(v) && v > 0) ? Math.round(v/10000)+'만원' : '-';
+const won  = v => {
+  if(v == null || isNaN(v) || v <= 0) return '-';
+  if(v < 10000) return Math.round(v).toLocaleString('ko-KR')+'원';
+  return Math.round(v/10000)+'만원';
+};
 const num  = v => v != null && !isNaN(v) ? Number(v).toLocaleString('ko-KR') : '-';
 const pct  = v => v != null && !isNaN(v) ? Math.round(v*100)+'%' : '-';
 const safe = v => (v == null || v === '' || isNaN(v)) ? 0 : Number(v);
@@ -372,23 +376,39 @@ async function loadData(){
   })).filter(r => r.name && r.lat && r.lng);
 
   /* neighbor_lots */
-  LOTS = nbrRows.map(r => ({
-    id:           toStr(r['주차장ID']),
-    name:         toStr(r['주차장명']),
-    addr:         toStr(r['주차장_주소']),
-    lat:          toNum(r['Latitude']),
-    lng:          toNum(r['Longitude']),
-    spots:        toNum(r['주차면수']),
-    s_sold:       toNum(r['정기권_판매량']) || 0,
-    s_price:      toNum(r['정기권_평균가']),
-    s_basis:      toStr(r['정기권_가격기준']),
-    daily_sold:   toNum(r['평일종일권_판매량']) || 0,
-    daily_price:  toNum(r['평일종일권_평균가']),
-    daily_basis:  toStr(r['평일종일권_가격기준']),
-    ptype:        (toNum(r['정기권_판매량'])>0 && toNum(r['평일종일권_판매량'])>0) ? 'both'
-                : toNum(r['정기권_판매량'])>0 ? 'season_only'
-                : toNum(r['평일종일권_판매량'])>0 ? 'park_only' : 'season_only',
-  })).filter(r => r.name && r.lat && r.lng);
+  LOTS = nbrRows.map(r => {
+    const s_sold  = toNum(r['정기권_판매량']);
+    const s_price = toNum(r['정기권_평균가']);
+    const d_sold  = toNum(r['평일종일권_판매량']);
+    const d_price = toNum(r['평일종일권_평균가']);
+
+    // s_basis가 '데이터없음'이면 정기권 가격 무효 처리
+    const sBasisTxt = toStr(r['정기권_가격기준']);
+    const dBasisTxt = toStr(r['평일종일권_가격기준']);
+    const sInvalid  = sBasisTxt === '데이터없음';
+    const dInvalid  = dBasisTxt === '데이터없음';
+    // i열(정기권_가격기준), l열(평일종일권_가격기준) 라벨은 노출 안 함
+
+    const hasSeason = !sInvalid && s_price != null && s_price > 0;
+    const hasDaily  = !dInvalid && d_price != null && d_price > 0;
+
+    return {
+      id:          toStr(r['주차장ID']),
+      name:        toStr(r['주차장명']),
+      addr:        toStr(r['주차장_주소']),
+      lat:         toNum(r['Latitude']),
+      lng:         toNum(r['Longitude']),
+      spots:       toNum(r['주차면수']),
+      s_sold:      !sInvalid && s_sold != null ? s_sold : 0,
+      s_price:     !sInvalid ? s_price : null,
+      daily_sold:  !dInvalid && d_sold != null ? d_sold : 0,
+      daily_price: !dInvalid ? d_price : null,
+      ptype: (hasSeason && hasDaily) ? 'both'
+           : hasSeason ? 'season_only'
+           : hasDaily  ? 'park_only'
+           : 'season_only',
+    };
+  }).filter(r => r.name && r.lat && r.lng);
 
   console.log('✅ candidates:', CANDS.length, '/ public:', PUBLIC_LOTS.length, '/ neighbor_lots:', LOTS.length);
   document.getElementById('sc').textContent = CANDS.length;
@@ -663,8 +683,8 @@ function renderCandPanel(c, pool){
   const pnl=document.getElementById('pnl');
   pnl.classList.remove('wide');
 
-  const hasSeasonPool = pool.filter(p=>p.s_sold>0||p.s_price!=null);
-  const hasDailyPool  = pool.filter(p=>p.daily_sold>0||p.daily_price!=null);
+  const hasSeasonPool = pool.filter(p=>p.s_price!=null&&p.s_price>0);
+  const hasDailyPool  = pool.filter(p=>p.daily_price!=null&&p.daily_price>0);
   const seasonPrices = hasSeasonPool.map(p=>p.s_price).filter(v=>v!=null&&v>0).sort((a,b)=>a-b);
   const dailyPrices  = hasDailyPool.map(p=>p.daily_price).filter(v=>v!=null&&v>0).sort((a,b)=>a-b);
   const medSeason = seasonPrices.length ? seasonPrices[Math.floor(seasonPrices.length/2)] : null;
@@ -728,19 +748,26 @@ function renderCandPanel(c, pool){
     <div>
       <div class="nhead">인근 판매 현장 (클릭하면 상세)</div>
       ${pool.map((n,i)=>{
-        const sText = n.s_price!=null&&n.s_price>0 ? won(n.s_price) : '-';
-        const dText = n.daily_price!=null&&n.daily_price>0 ? won(n.daily_price) : '-';
+        const hS = n.s_price != null && n.s_price > 0;
+        const hD = n.daily_price != null && n.daily_price > 0;
+        const rightHtml = (hS && hD)
+          ? `<div class="np">정기 ${won(n.s_price)}</div><div style="font-size:11px;color:var(--t3)">종일 ${won(n.daily_price)}</div>`
+          : hS ? `<div class="np">정기 ${won(n.s_price)}</div>`
+          : hD ? `<div class="np">종일 ${won(n.daily_price)}</div>`
+          : `<div class="np" style="color:var(--t3)">가격 없음</div>`;
+        const bottomTxt = (hS && hD)
+          ? `정기 ${num(n.s_sold)}건 · 종일 ${num(n.daily_sold)}건`
+          : hS ? `정기 ${num(n.s_sold)}건`
+          : hD ? `종일 ${num(n.daily_sold)}건`
+          : '판매 데이터 없음';
         return `
           <div class="nc" onclick="selNear(${i})">
             <div class="nc-l">
               ${ptBadge(n.ptype)}
               <div class="nn">${n.name}</div>
-              <div class="nm">${n.dist}m · ${n.spots||'?'}면 · 정기 ${num(n.s_sold)}건 · 종일 ${num(n.daily_sold)}건</div>
+              <div class="nm">${n.dist}m · ${n.spots!=null?n.spots+'면':'면수미상'} · ${bottomTxt}</div>
             </div>
-            <div class="nc-r">
-              <div class="np">정기 ${sText}</div>
-              <div style="font-size:11px;color:var(--t3)">종일 ${dText}</div>
-            </div>
+            <div class="nc-r">${rightHtml}</div>
           </div>`;
       }).join('')}
     </div>
@@ -757,46 +784,43 @@ function renderNearDetail(n){
 
   const mc = (k,v,s='') => `<div class="hero-metric"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
 
-  // 보유 데이터 판단
-  const hasSeason = n.s_price!=null || n.s_sold>0;
-  const hasDaily  = n.daily_price!=null || n.daily_sold>0;
+  // 평균가 > 0 이면 해당 상품 보유 → 판매량은 0이어도 함께 노출
+  const hasSeason = n.s_price != null && n.s_price > 0;
+  const hasDaily  = n.daily_price != null && n.daily_price > 0;
 
   // 1번: 둘 다 있음 / 2번: 종일권만 / 3번: 정기권만
   let metricsHtml = '';
   if(hasSeason && hasDaily){
-    // 1번: 4개 수치 모두
     metricsHtml = `
     <div class="sec">
       <div class="stag"><span class="sn2" style="background:#1A56DB">S+P</span>정기권 + 평일종일권 실적</div>
       <div class="hero-grid">
+        ${mc('정기권 평균가', won(n.s_price), '참고용 평균가')}
         ${mc('정기권 판매량', num(n.s_sold)+'건', '3개월 기준')}
-        ${mc('정기권 평균가', won(n.s_price), n.s_basis||'-')}
+        ${mc('종일권 평균가', won(n.daily_price), '참고용 평균가')}
         ${mc('종일권 판매량', num(n.daily_sold)+'건', '3개월 기준')}
-        ${mc('종일권 평균가', won(n.daily_price), n.daily_basis||'-')}
-      </div>
-    </div>`;
-  } else if(hasDaily){
-    // 2번: 종일권만
-    metricsHtml = `
-    <div class="sec">
-      <div class="stag"><span class="sn2 park">P</span>평일종일권 실적</div>
-      <div class="mg2">
-        ${mc('종일권 판매량', num(n.daily_sold)+'건', '3개월 기준')}
-        ${mc('종일권 평균가', won(n.daily_price), n.daily_basis||'-')}
       </div>
     </div>`;
   } else if(hasSeason){
-    // 3번: 정기권만
     metricsHtml = `
     <div class="sec">
       <div class="stag"><span class="sn2 red">S</span>정기권 실적</div>
       <div class="mg2">
+        ${mc('정기권 평균가', won(n.s_price), '참고용 평균가')}
         ${mc('정기권 판매량', num(n.s_sold)+'건', '3개월 기준')}
-        ${mc('정기권 평균가', won(n.s_price), n.s_basis||'-')}
+      </div>
+    </div>`;
+  } else if(hasDaily){
+    metricsHtml = `
+    <div class="sec">
+      <div class="stag"><span class="sn2 park">P</span>평일종일권 실적</div>
+      <div class="mg2">
+        ${mc('종일권 평균가', won(n.daily_price), '참고용 평균가')}
+        ${mc('종일권 판매량', num(n.daily_sold)+'건', '3개월 기준')}
       </div>
     </div>`;
   } else {
-    metricsHtml = `<div class="sec"><p style="font-size:13px;color:var(--t2);text-align:center;padding:20px 0">판매 데이터 없음</p></div>`;
+    metricsHtml = `<div class="sec"><p style="font-size:13px;color:var(--t2);text-align:center;padding:20px 0">가격 데이터 없음</p></div>`;
   }
 
   pnl.innerHTML = `
